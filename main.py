@@ -1,52 +1,31 @@
-import time
 import matplotlib.pyplot as plt
+import math
 
-THICKNESS = 0.00008
-
-
-start = time.time()
-exponentiation_folded_thickness = THICKNESS * 2 ** 43
-elapsed_time_exponentiation = time.time() - start
+chestnut_bun_volume = 523.6  # cubic centimeters
 
 
-start = time.time()
-for_folded_thickness = THICKNESS
-for _ in range(43):
-    for_folded_thickness *= 2
-elapsed_time_for = time.time() - start
+solar_system_volume = 1.41e27  # cubic kilometers
 
 
-folded_thickness_list = []
+number_of_chestnut_buns = solar_system_volume / chestnut_bun_volume
 
 
-folded_thickness = THICKNESS
-for i in range(43):
-    folded_thickness = folded_thickness*2
-    folded_thickness_list.append(folded_thickness)
+byvine_doubling_time = 5  # minutes
 
 
-print("Execution time with exponentiation arithmetic operators:", elapsed_time_exponentiation, "seconds")
-print("Execution time with for statement:", elapsed_time_for, "seconds")
+time_to_cover_solar_system = 0
+number_of_chestnut_buns_list = []
+time_list = []
 
+for i in range(int(math.log2(number_of_chestnut_buns))):
+    time_to_cover_solar_system += byvine_doubling_time
+    number_of_chestnut_buns_list.append(number_of_chestnut_buns)
+    time_list.append(time_to_cover_solar_system)
 
-plt.title("Thickness of Folded Paper")
-plt.xlabel("Number of Folds")
-plt.ylabel("Thickness [m]")
-plt.plot(folded_thickness_list, color='red', linewidth=2, linestyle='--')
-plt.tick_params(labelsize=20)
+    number_of_chestnut_buns = number_of_chestnut_buns * 2
+
+plt.plot(time_list, number_of_chestnut_buns_list)
+plt.xlabel("Time (minutes)")
+plt.ylabel("Number of chestnut buns")
+plt.title("Number of chestnut buns vs. time")
 plt.show()
-
-
-print("Thickness of the paper after 43 folds:", folded_thickness_list[-1], "meters")
-
-
-print("Thickness in kilometers:", "{: .2f}".format(folded_thickness_list[-1] / 1000), "kilometers")
-
-
-distance_to_moon = 384400
-if folded_thickness_list[-1] > distance_to_moon:
-    print("The folded paper reaches the moon!")
-else:
-    print("The folded paper does not reach the moon.")
-
-print("The thickness of the paper increases exponentially with the number of folds. This means that the thickness increases rapidly as the number of folds increases.")
