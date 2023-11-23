@@ -1,10 +1,10 @@
 import matplotlib.pyplot as plt
 import math
 
-chestnut_bun_volume = 523.6  # cubic centimeters
+chestnut_bun_volume = 523.6  # centimeters
 
 
-solar_system_volume = 1.41e27  # cubic kilometers
+solar_system_volume = 1.41e27  # kilometers
 
 
 number_of_chestnut_buns = solar_system_volume / chestnut_bun_volume
