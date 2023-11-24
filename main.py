@@ -1,31 +1,48 @@
-import matplotlib.pyplot as plt
-import math
+import numpy as np
 
-chestnut_bun_volume = 523.6  # centimeters
+def initialize_centroids(X, K):
+    """
+    Randomly select K data points from X as initial centroids.
 
+    Args:
+        X (np.ndarray): Input data.
+        K (int): Number of clusters.
 
-solar_system_volume = 1.41e27  # kilometers
+    Returns:
+        np.ndarray: Initial centroids.
+    """
+    centroids = X[np.random.choice(X.shape[0], K, replace=False)]
+    return centroids
 
+def kmeans(X, K, max_iter=100):
+    """
+    K-means clustering algorithm.
 
-number_of_chestnut_buns = solar_system_volume / chestnut_bun_volume
+    Args:
+        X (np.ndarray): Input data.
+        K (int): Number of clusters.
+        max_iter (int): Maximum number of iterations.
 
+    Returns:
+        np.ndarray: Cluster labels.
+    """
+    centroids = initialize_centroids(X, K)
+    for _ in range(max_iter):
+        distances = np.linalg.norm(X[:, None] - centroids[None, :], axis=2)
+        labels = np.argmin(distances, axis=1)
 
-byvine_doubling_time = 5  # minutes
+        new_centroids = np.zeros_like(centroids)
+        for k in range(K):
+            new_centroids[k] = np.mean(X[labels == k], axis=0)
 
+        if np.allclose(centroids, new_centroids):
+            break
 
-time_to_cover_solar_system = 0
-number_of_chestnut_buns_list = []
-time_list = []
+        centroids = new_centroids
 
-for i in range(int(math.log2(number_of_chestnut_buns))):
-    time_to_cover_solar_system += byvine_doubling_time
-    number_of_chestnut_buns_list.append(number_of_chestnut_buns)
-    time_list.append(time_to_cover_solar_system)
+    return labels
 
-    number_of_chestnut_buns = number_of_chestnut_buns * 2
-
-plt.plot(time_list, number_of_chestnut_buns_list)
-plt.xlabel("Time (minutes)")
-plt.ylabel("Number of chestnut buns")
-plt.title("Number of chestnut buns vs. time")
-plt.show()
+X = np.array([[1, 1], [2, 2], [3, 3], [4, 4], [5, 5]])
+K = 2
+labels = kmeans(X, K)
+print(labels)
