@@ -1,159 +1,88 @@
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.decomposition import PCA
-from sklearn.cluster import KMeans
-from sklearn.metrics import silhouette_score
-from sklearn.manifold import TSNE
-from sklearn.cluster import DBSCAN
-def initialize_centroids(X, K):
-    """
-    Randomly select K initial centroids from the data matrix X.
+from sklearn.datasets import make_blobs
 
-    This function solves Problem 1. It randomly selects K initial centroids from the data matrix X.
-    """
-    centroids = np.zeros((K, X.shape[1]))
-    for k in range(K):
-        idx = np.random.randint(0, X.shape[0])
-        centroids[k, :] = X[idx, :]
-    return centroids
+class ScratchKMeans:
+    def __init__(self, n_clusters, n_init, max_iter, tol, verbose=False):
+        self.n_clusters = n_clusters
+        self.n_init = n_init
+        self.max_iter = max_iter
+        self.tol = tol
+        self.verbose = verbose
+        self.centers = None
+        self.labels = None
 
-def calculate_distances(X, mu):
-    """
-    Calculates the distances between each data point and each centroid.
+    def initialize_centers(self, X):
+        indices = np.random.choice(len(X), self.n_clusters, replace=False)
+        return X[indices]
 
-    This function solves Problem 3. It calculates the distances between each data point and each centroid.
-    """
-    distances = np.linalg.norm(X[:, :, None] - mu[None, :, :], axis=2)
-    return distances
+    def calculate_sse(self, X, centers, labels):
+        sse = 0
+        for k in range(len(centers)):
+            cluster_points = X[labels == k]
+            sse += np.sum(np.linalg.norm(cluster_points - centers[k]) ** 2)
+        return sse
 
-def assign_clusters(distances):
-    """
-    Assigns each data point to the closest centroid.
+    def allocate_to_cluster(self, X, centers):
+        distances = np.linalg.norm(X[:, np.newaxis] - centers, axis=2)
+        labels = np.argmin(distances, axis=1)
+        return labels
 
-    This function solves Problem 3. It assigns each data point to the closest centroid.
-    """
-    clusters = np.argmin(distances, axis=1)
-    return clusters
+    def move_centers(self, X, labels):
+        new_centers = np.zeros((self.n_clusters, X.shape[1]))
+        for k in range(self.n_clusters):
+            cluster_points = X[labels == k]
+            if len(cluster_points) > 0:
+                new_centers[k] = np.mean(cluster_points, axis=0)
+        return new_centers
 
-def update_centroids(X, clusters, r):
-    """
-    Updates the centroids to the means of the data points assigned to each cluster.
+    def kmeans(self, X):
+        best_centers = None
+        best_labels = None
+        best_sse = np.inf
 
-    This function solves Problem 4. It updates the centroids to the means of the data points assigned to each cluster.
-    """
-    mu = np.zeros((r.shape[1], X.shape[1]))
-    for k in range(r.shape[1]):
-        Xk = X[clusters == k, :]
-        if len(Xk) > 0:
-            mu[k, :] = np.mean(Xk, axis=0)
-    return mu
-"problem 6"
-def kmeans(X, K, max_iter=100, tol=1e-4, n_init=10):
-    """
-    Performs k-means clustering with multiple initializations.
+        for _ in range(self.n_init):
+            centers = self.initialize_centers(X)
+            for _ in range(self.max_iter):
+                labels = self.allocate_to_cluster(X, centers)
+                new_centers = self.move_centers(X, labels)
 
-    Args:
-        X (np.ndarray): The data matrix of shape (N, D).
-        K (int): The number of clusters.
-        max_iter (int): The maximum number of iterations.
-        tol (float): The tolerance for convergence.
-        n_init (int): The number of initializations.
+                if np.linalg.norm(new_centers - centers) < self.tol:
+                    break
 
-    Returns:
-        np.ndarray: The cluster assignments of shape (N,).
-        np.ndarray: The centroids of shape (K, D).
-    """
-    best_sse = np.inf
-    best_mu = None
-    best_clusters = None
+                centers = new_centers
 
-    for _ in range(n_init):
-        mu = initialize_centroids(X, K)
-        for _ in range(max_iter):
-            distances = calculate_distances(X, mu)
-            clusters = assign_clusters(distances)
-            r = np.zeros((X.shape[0], K))
-            for i in range(X.shape[0]):
-                r[i, clusters[i]] = 1
-            mu = update_centroids(X, clusters, r)
+            sse = self.calculate_sse(X, centers, labels)
 
-            # Check for convergence
-            if np.linalg.norm(mu - update_centroids(X, clusters, r)) < tol:
-                break
+            if self.verbose:
+                print(f"Iteration {_ + 1}, SSE: {sse}")
 
-        sse = calculate_sse(X, r, mu)
-        if sse < best_sse:
-            best_sse = sse
-            best_mu = mu
-            best_clusters = clusters
+            if sse < best_sse:
+                best_sse = sse
+                best_centers = centers
+                best_labels = labels
 
-    return best_clusters, best_mu
-"problem 7 For the data point $ X_n $ and the center point $ \ mu_k $ determined by learning, select $ r_ {nk} $ that minimizes $ SSE $."
-"Assign the data point $ X_n $ to the nearest $ \ mu_k $."
+        self.centers = best_centers
+        self.labels = best_labels
 
-def calculate_sse(X, r, mu):
-    """
-    Calculates the sum of squared errors (SSE).
+    def fit(self, X):
+        self.kmeans(X)
 
-    Args:
-        X (np.ndarray): The data matrix of shape (N, D).
-        r (np.ndarray): The cluster assignment matrix of shape (N, K).
-        mu (np.ndarray): The centroids of shape (K, D).
+    def predict(self, X):
+        distances = np.linalg.norm(X[:, np.newaxis] - self.centers, axis=2)
+        labels = np.argmin(distances, axis=1)
+        return labels
 
-    Returns:
-        float: The sum of squared errors.
-    """
-    sse = 0
-    for k in range(r.shape[1]):
-        Xk = X[r[:, k] == 1, :]
-        if len(Xk) > 0:
-            sse += np.sum((Xk - mu[k, :])**2)
-    return sse
+# Artificial dataset for clustering
+X, _ = make_blobs(n_samples=100, n_features=2, centers=4, cluster_std=0.5, shuffle=True, random_state=0)
 
-def elbow_method(X, K_range):
+# Create and fit the KMeans model
+kmeans_model = ScratchKMeans(n_clusters=4, n_init=10, max_iter=100, tol=1e-4, verbose=True)
+kmeans_model.fit(X)
 
-    """
-    Performs the elbow method to determine the optimal number of clusters.
-
-    Args:
-        X (np.ndarray): The data matrix of shape (N, D).
-        K_range (list): The range of K values to consider.
-
-    Returns:
-        int: The optimal number of clusters.
-    """
-    sse_values = []
-    for K in K_range:
-        kmeans = KMeans(n_clusters=K)
-        kmeans.fit(X)
-        r = kmeans.predict(X)
-        sse = calculate_sse(X, r, kmeans.cluster_centers_)
-        sse_values.append(sse)
-
-    # Plot the elbow graph
-    plt.plot(K_range, sse_values)
-    plt.xlabel('Number of clusters (K)')
-    plt.ylabel('Sum of squared errors (SSE)')
-    plt.title('Elbow method')
-    plt.show()
-
-    # Find the elbow point
-    elbow_point = 0
-    min_sse = np.inf
-    for i, sse in enumerate(sse_values):
-        if sse < min_sse:
-            min_sse = sse
-            elbow_point = i
-
-    return K_range[elbow_point]
-
-def main():
-    # Load the data
-    data = np.loadtxt('Wholesale customers data.csv', delimiter=',', skiprows=1)
-
-    # Perform the elbow method
-    K_range = range(1, 11)
-    optimal_K = elbow_method(data[:, 4:], K_range)
-    print('Optimal number of clusters:', optimal_K)
-
+# Plotting the clusters
+plt.scatter(X[:, 0], X[:, 1], c=kmeans_model.labels, cmap='viridis', s=50, alpha=0.7)
+plt.scatter(kmeans_model.centers[:, 0], kmeans_model.centers[:, 1], c='red', marker='X', s=200, label='Centroids')
+plt.title('KMeans Clustering')
+plt.legend()
+plt.show()
