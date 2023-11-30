@@ -1,37 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
-def MSE(y_pred, y):
-    """
-    Parameters
-    ----------
-    y_pred : ndarray, shape (n_samples,)
-    y : ndarray, shape (n_samples,)
-
-    Returns
-    ----------
-    mse : numpy.float
-    """
-    mse = np.mean((y-y_pred)**2)
-
-    return mse
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
 
 class ScratchLinearRegression():
-    """
-    Parameters
-    ----------
-    num_iter : int
-    lr : float
-    no_bias : bool
-    verbose : bool
-
-    Attributes
-    ----------
-    self.coef_ : ndarray, shape (n_features,)
-    self.loss : ndarray, shape (self.iter,)
-    self.val_loss : ndarray, shape (self.iter,)
-    """
-
     def __init__(self, num_iter, lr, no_bias, verbose):
         self.iter = num_iter
         self.lr = lr
@@ -39,97 +12,203 @@ class ScratchLinearRegression():
         self.verbose = verbose
         self.loss = np.zeros(self.iter)
         self.val_loss = np.zeros(self.iter)
-
-    def fit(self, X, y, X_val=None, y_val=None):
-        """
-        Parameters
-        ----------
-        X : ndarray, shape (n_samples, n_features)
-        y : ndarray, shape (n_samples, )
-
-        X_val : ndarray, shape (n_samples, n_features)
-        y_val : ndarray, shape (n_samples, )
-        """
-        if self.no_bias == False:
-            X = np.concatenate([X, np.ones((X.shape[0], 1))], axis=1)
-            if X_val is not None:
-                X_val = np.concatenate([X_val, np.ones((X_val.shape[0], 1))], axis=1)
-
-        self.coef_ = np.random.random((X.shape[1], ))
-
-        for epoch in range(self.iter):
-            y_pred = self._linear_hypothesis(X)
-            self.loss[epoch] = np.mean((y-y_pred)**2)
-            self._gradient_descent(X, self.loss[epoch])
-
-            ### validation ###
-            if X_val is not None:
-                y_pred_val = self._linear_hypothesis(X_val)
-                self.val_loss[epoch] = np.mean((y_val - y_pred_val) ** 2)
-
-            if self.verbose:
-                if X_val is not None:
-                    print(f"Epoch-{epoch}: train loss={self.loss[epoch]}, "
-                          f"val loss={self.val_loss[epoch]}")
-                else:
-                    print(f"Epoch-{epoch}: train loss={self.loss[epoch]}")
-
-        return self.coef_, self.loss, self.val_loss
-
-    def predict(self, X):
-        """
-        Parameters
-        ----------
-        X : ndarray, shape (n_samples, n_features)
-        Returns
-        -------
-            ndarray, shape (n_samples, 1)
-        """
-        y_pred = self._linear_hypothesis(X)
-
-        return y_pred
+        self.coef_ = None
 
     def _linear_hypothesis(self, X):
-        """
-        Parameters
-        ----------
-        X : ndarray, shape (n_samples, n_features)
-        Returns
-        -------
-          ndarray, shape (n_samples, 1)
-        """
-
-        y_pred =  np.dot(X, self.coef_)
-
-        return y_pred
+        return X @ self.coef_
 
     def _gradient_descent(self, X, error):
+        gradient = X.T @ error / len(X)
+        self.coef_ -= self.lr * gradient
 
-        gradient = np.mean(X.T * error, axis=1)
-        self.coef_ = self.coef_ - self.lr * gradient
+    def fit(self, X, y, X_val=None, y_val=None):
+        if not self.no_bias:
+            X = np.hstack([np.ones((len(X), 1)), X])
+            if X_val is not None:
+                X_val = np.hstack([np.ones((len(X_val), 1)), X_val])
 
-        pass
+        self.coef_ = np.zeros(X.shape[1])
 
-### test ####
-X = np.random.random((100, 3))
-Y = np.random.random((100, ))
+        for i in range(self.iter):
+            error = self._linear_hypothesis(X) - y
+            self._gradient_descent(X, error)
+            self.loss[i] = mean_squared_error(y, self._linear_hypothesis(X))
 
-X_val = np.random.random((100, 3))
-Y_val = np.random.random((100, ))
+            if X_val is not None:
+                val_error = self._linear_hypothesis(X_val) - y_val
+                self.val_loss[i] = mean_squared_error(y_val, self._linear_hypothesis(X_val))
 
-n_iter = 5
-lr = 1#0.001
-bias = True
-verbose=True
+            if self.verbose and (i % 100 == 0):
+                print(f"Iteration {i + 1}/{self.iter} | Training Loss: {self.loss[i]}")
 
-linear_model = ScratchLinearRegression(num_iter=n_iter,
-                                       lr=lr,
-                                       no_bias=bias,
-                                       verbose=True)
+    def predict(self, X):
+        if not self.no_bias:
+            X = np.hstack([np.ones((len(X), 1)), X])
+        return self._linear_hypothesis(X)
 
-model, train_loss, val_loss = linear_model.fit(X, Y, X_val, Y_val)
+def MSE(y_pred, y):
+    return np.mean((y_pred - y) ** 2)
 
-plt.plot(train_loss, label='train_loss')
-plt.plot(val_loss, label='val_loss')
+# Problem 1
+# _linear_hypothesis method added to the ScratchLinearRegression class
+
+# Problem 2
+# _gradient_descent method added to the ScratchLinearRegression class
+
+# Problem 3
+# predict method added to the ScratchLinearRegression class
+
+# Problem 4
+def MSE(y_pred, y):
+    return np.mean((y_pred - y) ** 2)
+
+# Problem 5
+# fit method updated to record self.loss and self.val_loss
+
+# Problem 6
+# Load the data
+# Assuming X_train, X_test, y_train, y_test are loaded from the dataset
+
+# Split the data into training and validation sets
+X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.2, random_state=42)
+
+# Instantiate and fit the ScratchLinearRegression model
+model = ScratchLinearRegression(num_iter=1000, lr=0.001, no_bias=False, verbose=True)
+model.fit(X_train, y_train, X_val, y_val)
+
+# Compare with scikit-learn implementation
+sklearn_model = LinearRegression()
+sklearn_model.fit(X_train, y_train)
+sklearn_pred = sklearn_model.predict(X_val)
+
+# Compare the coefficients
+print("Comparison of coefficients:")
+print("Scratch Coefficients:", model.coef_)
+print("Scikit-Learn Coefficients:", np.insert(sklearn_model.coef_, 0, sklearn_model.intercept_))
+
+# Compare the mean squared error
+scratch_mse = MSE(model.predict(X_val), y_val)
+sklearn_mse = mean_squared_error(sklearn_pred, y_val)
+
+print("\nComparison of Mean Squared Error:")
+print("Scratch MSE:", scratch_mse)
+print("Scikit-Learn MSE:", sklearn_mse)
+
+# Problem 7
+# Plotting the learning curve
+plt.plot(model.loss, label='Training Loss')
+plt.plot(model.val_loss, label='Validation Loss')
+plt.title('Learning Curve')
+plt.xlabel('Iterations')
+plt.ylabel('Mean Squared Error')
 plt.legend()
 plt.show()
+
+# Problem 8 (Advance task)
+# Bias term removal experiment
+model_no_bias = ScratchLinearRegression(num_iter=1000, lr=0.001, no_bias=True, verbose=False)
+model_no_bias.fit(X_train, y_train, X_val, y_val)
+no_bias_mse = MSE(model_no_bias.predict(X_val), y_val)
+
+print("\nComparison without Bias Term:")
+print("Scratch MSE (with bias):", scratch_mse)
+print("Scratch MSE (without bias):", no_bias_mse)
+
+# Problem 9 (Advance task)
+# Multidimensional feature quantity experiment
+X_train_squared = X_train ** 2
+X_val_squared = X_val ** 2
+
+model_squared = ScratchLinearRegression(num_iter=1000, lr=0.001, no_bias=False, verbose=False)
+model_squared.fit(X_train_squared, y_train, X_val_squared, y_val)
+squared_mse = MSE(model_squared.predict(X_val_squared), y_val)
+
+print("\nComparison with Squared Features:")
+print("Scratch MSE (original):", scratch_mse)
+print("Scratch MSE (squared features):", squared_mse)
+
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
+
+class ScratchLinearRegression():
+    def __init__(self, num_iter, lr, no_bias, verbose):
+        self.iter = num_iter
+        self.lr = lr
+        self.no_bias = no_bias
+        self.verbose = verbose
+        self.loss = np.zeros(self.iter)
+        self.val_loss = np.zeros(self.iter)
+        self.coef_ = None
+
+    def _linear_hypothesis(self, X):
+        return X @ self.coef_
+
+    def _gradient_descent(self, X, error):
+        gradient = X.T @ error / len(X)
+        self.coef_ -= self.lr * gradient
+
+    def fit(self, X, y, X_val=None, y_val=None):
+        if not self.no_bias:
+            X = np.hstack([np.ones((len(X), 1)), X])
+            if X_val is not None:
+                X_val = np.hstack([np.ones((len(X_val), 1)), X_val])
+
+        self.coef_ = np.zeros(X.shape[1])
+
+        for i in range(self.iter):
+            error = self._linear_hypothesis(X) - y
+            self._gradient_descent(X, error)
+            self.loss[i] = mean_squared_error(y, self._linear_hypothesis(X))
+
+            if X_val is not None:
+                val_error = self._linear_hypothesis(X_val) - y_val
+                self.val_loss[i] = mean_squared_error(y_val, self._linear_hypothesis(X_val))
+
+            if self.verbose and (i % 100 == 0):
+                print(f"Iteration {i + 1}/{self.iter} | Training Loss: {self.loss[i]}")
+
+    def predict(self, X):
+        if not self.no_bias:
+            X = np.hstack([np.ones((len(X), 1)), X])
+        return self._linear_hypothesis(X)
+
+def MSE(y_pred, y):
+    return np.mean((y_pred - y) ** 2)
+
+# Problem 1 to 9 (Code provided in the previous response)
+
+# Problem 10 (Advance task)
+# Derivation of update formula
+# The update formula is derived from the gradient of the mean squared error (MSE) with respect to the parameters.
+# Derivative of J(θ) w.r.t. θ_j is given by:
+# ∂/∂θ_j J(θ) = 1/m * ∑(hθ(xi) - yi) * xi_j
+# Update formula: θ_j := θ_j - α * ∂/∂θ_j J(θ)
+# This leads to the _gradient_descent method in the class.
+
+# Problem 11 (Advance task)
+# Problem of local optimum solution
+# In linear regression, the MSE loss function is convex, meaning it has only one global minimum.
+# The steepest descent method may encounter local minima in non-convex problems, but for linear regression, it's not an issue.
+# The mathematical proof involves showing that the MSE loss function is a convex quadratic function.
+# Visualization of a convex loss function guarantees that the steepest descent will converge to the global minimum.
+# However, in non-convex problems, there might be multiple local minima, making convergence to a global minimum difficult.
+
+# Let's visualize the convexity for linear regression
+def visualize_convexity():
+    theta_values = np.linspace(-5, 5, 100)
+    J_values = np.zeros_like(theta_values)
+
+    for i, theta in enumerate(theta_values):
+        J_values[i] = np.mean((X_train @ np.array([theta, 1]) - y_train) ** 2) / 2
+
+    plt.plot(theta_values, J_values)
+    plt.title('Convexity of Mean Squared Error (Linear Regression)')
+    plt.xlabel('Theta')
+    plt.ylabel('Mean Squared Error (J)')
+    plt.show()
+
+visualize_convexity()
+
