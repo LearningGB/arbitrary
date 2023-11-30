@@ -1,143 +1,145 @@
-# Library
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
+import matplotlib.patches as mpatches
+from sklearn import datasets
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
 
-# Iris Dataset with two Species :  Iris-setosa(0) and Iris-versicolor(1)
-# It has 4 features named as SepalWidthCm, SepalLengthCm, PetalLengthCm, PetalWidthCm
+# Load iris dataset
+iris = datasets.load_iris()
+X = iris.data[:, [0, 2]]  # Selecting two features for visualization
+y = iris.target
 
-train_x = np.array(
-    [[5.1, 3.5, 1.4, 0.2], [4.9, 3, 1.4, 0.2], [4.7, 3.2, 1.3, 0.2], [4.6, 3.1, 1.5, 0.2], [5, 3.6, 1.4, 0.2],
-     [5.4, 3.9, 1.7, 0.4], [4.6, 3.4, 1.4, 0.3], [5, 3.4, 1.5, 0.2], [4.4, 2.9, 1.4, 0.2], [4.9, 3.1, 1.5, 0.1],
-     [5.4, 3.7, 1.5, 0.2], [7, 3.2, 4.7, 1.4], [6.4, 3.2, 4.5, 1.5], [6.9, 3.1, 4.9, 1.5], [5.5, 2.3, 4, 1.3],
-     [6.5, 2.8, 4.6, 1.5], [5.7, 2.8, 4.5, 1.3], [6.3, 3.3, 4.7, 1.6], [4.9, 2.4, 3.3, 1], [6.6, 2.9, 4.6, 1.3],
-     [5.2, 2.7, 3.9, 1.4], [4.8, 3.4, 1.6, 0.2], [4.8, 3, 1.4, 0.1], [4.3, 3, 1.1, 0.1], [5.8, 4, 1.2, 0.2],
-     [5.7, 4.4, 1.5, 0.4], [5.4, 3.9, 1.3, 0.4], [5.1, 3.5, 1.4, 0.3], [5.7, 3.8, 1.7, 0.3], [5.1, 3.8, 1.5, 0.3],
-     [5, 2, 3.5, 1], [5.9, 3, 4.2, 1.5], [6, 2.2, 4, 1], [6.1, 2.9, 4.7, 1.4], [5.6, 2.9, 3.6, 1.3],
-     [6.7, 3.1, 4.4, 1.4], [5.6, 3, 4.5, 1.5], [5.8, 2.7, 4.1, 1], [6.2, 2.2, 4.5, 1.5], [5.6, 2.5, 3.9, 1.1]])
-train_y = np.array(
-    [[0], [0], [0], [0], [0], [0], [0], [0], [0], [0], [0], [1], [1], [1], [1], [1], [1], [1], [1], [1], [1], [0], [0],
-     [0], [0], [0], [0], [0], [0], [0], [1], [1], [1], [1], [1], [1], [1], [1], [1], [1]])
-test_x = np.array(
-    [[5.4, 3.4, 1.7, 0.2], [5.1, 3.7, 1.5, 0.4], [4.6, 3.6, 1, 0.2], [5.1, 3.3, 1.7, 0.5], [4.8, 3.4, 1.9, 0.2],
-     [5.9, 3.2, 4.8, 1.8], [6.1, 2.8, 4, 1.3], [6.3, 2.5, 4.9, 1.5], [6.1, 2.8, 4.7, 1.2], [4.8, 2.9, 4.3, 1.3]])
-test_y = np.array([[0], [0], [0], [0], [0], [1], [1], [1], [1], [1]])
+# Problem 1: Select features and categories for practice
+# Choosing virgicolor and virginica, sepal_length and petal_length
+X_binary = X[np.isin(y, [1, 2])]
+y_binary = y[np.isin(y, [1, 2])]
 
-train_x = train_x.T
-train_y = train_y.T
-test_x = test_x.T
-test_y = test_y.T
+# Problem 2: Data analysis
+# Scatter plot, boxplot, violinplot
+df = pd.DataFrame(data=np.column_stack((X_binary, y_binary)), columns=['sepal_length', 'petal_length', 'species'])
+df['species'] = df['species'].astype(int)
 
-print(train_x.shape)
-print(train_y.shape)
-print(test_x.shape)
-print(test_y.shape)
+# Problem 3: Division of preprocessing/training data and verification data
+X_train, X_val, y_train, y_val = train_test_split(X_binary, y_binary, test_size=0.25, random_state=42)
 
+# Problem 4: Pretreatment/Standardization
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_val_scaled = scaler.transform(X_val)
 
-# Sigmoid Activation function
-def sigmoid(z):
-    return 1 / (1 + np.exp(-z))
+# Problem 5: Learning and estimation with k-nn
+knn_model = KNeighborsClassifier(n_neighbors=5)
+knn_model.fit(X_train_scaled, y_train)
+y_val_pred_knn = knn_model.predict(X_val_scaled)
 
+# Problem 6: Evaluation
+accuracy_knn = accuracy_score(y_val, y_val_pred_knn)
+precision_knn = precision_score(y_val, y_val_pred_knn)
+recall_knn = recall_score(y_val, y_val_pred_knn)
+f1_knn = f1_score(y_val, y_val_pred_knn)
+confusion_mat_knn = confusion_matrix(y_val, y_val_pred_knn)
 
-# initilize parameters w and b
-def init_with_zeros(input_len):
-    w1 = np.zeros((input_len, 1))
-    b1 = 0
+print(f'k-nn - Accuracy: {accuracy_knn:.4f}, Precision: {precision_knn:.4f}, Recall: {recall_knn:.4f}, F1: {f1_knn:.4f}')
+print('Confusion Matrix:')
+print(confusion_mat_knn)
 
-    assert (w1.shape == (input_len, 1))  # if condition get false then stop execution
-    assert (isinstance(b1, int))
+# Problem 7: Visualization
+def decision_region(X, y, model, step=0.01, title='Decision Region', xlabel='xlabel', ylabel='ylabel',
+                    target_names=['versicolor', 'virginica']):
+    # Function implementation (same as provided in the text)
 
-    return w1, b1
+# Plot decision region for k-nn
+decision_region(X_train_scaled, y_train, knn_model, title='k-nn Decision Region')
 
+# Problem 8: Learning by other methods
+models = {
+    'Logistic Regression': LogisticRegression(),
+    'SVM': SVC(),
+    'Decision Tree': DecisionTreeClassifier(),
+    'Random Forest': RandomForestClassifier()
+}
 
-# Forward and Backward propagation
-def propagation(w, b, X, Y):
-    m = X.shape[1]  # m is no of training example
+for model_name, model in models.items():
+    model.fit(X_train_scaled, y_train)
+    y_val_pred = model.predict(X_val_scaled)
 
-    A = sigmoid(np.matmul(w.T, X) + b)  # activtion function
+    # Problem 6: Evaluation
+    accuracy = accuracy_score(y_val, y_val_pred)
+    precision = precision_score(y_val, y_val_pred)
+    recall = recall_score(y_val, y_val_pred)
+    f1 = f1_score(y_val, y_val_pred)
+    confusion_mat = confusion_matrix(y_val, y_val_pred)
 
-    cost = np.multiply(Y, np.log(A)) + np.multiply((1 - Y), np.log(1 - A))
-    cost = -np.sum(cost) / m
-    # print(cost)
+    print(f'{model_name} - Accuracy: {accuracy:.4f}, Precision: {precision:.4f}, Recall: {recall:.4f}, F1: {f1:.4f}')
+    print('Confusion Matrix:')
+    print(confusion_mat)
 
-    dw = (1 / m) * (np.matmul(X, (A - Y).T))  # backward propagation
-    db = (1 / m) * np.sum(A - Y)
+    # Problem 7: Visualization
+    decision_region(X_train_scaled, y_train, model, title=f'{model_name} Decision Region')
 
-    assert (dw.shape == w.shape)
-    assert (db.dtype == float)
+# Problem 9: (Advanced task) Comparison with and without standardization
+# Problem 9: (Advanced task) Comparison with and without standardization
+results_no_standardization = {}
 
-    grads = {"dw": dw, "db": db}
+for model_name, model in models.items():
+    model.fit(X_train, y_train)
+    y_val_pred = model.predict(X_val)
 
-    return grads, cost
+    # Problem 6: Evaluation
+    accuracy = accuracy_score(y_val, y_val_pred)
+    precision = precision_score(y_val, y_val_pred)
+    recall = recall_score(y_val, y_val_pred)
+    f1 = f1_score(y_val, y_val_pred)
+    confusion_mat = confusion_matrix(y_val, y_val_pred)
 
+    results_no_standardization[model_name] = {
+        'Accuracy': accuracy,
+        'Precision': precision,
+        'Recall': recall,
+        'F1': f1,
+        'Confusion Matrix': confusion_mat
+    }
 
-# update parameters w, b, db, dw
-def optimize(w, b, X, Y, num_iterations, learning_rate, print_cost=False):
-    costs = []
+    print(f'{model_name} (No Standardization) - Accuracy: {accuracy:.4f}, Precision: {precision:.4f}, '
+          f'Recall: {recall:.4f}, F1: {f1:.4f}')
+    print('Confusion Matrix:')
+    print(confusion_mat)
 
-    for i in range(num_iterations):
+# Problem 10: (Advance assignment) Highly accurate method using all objective variables
+X_all = iris.data
+y_all = iris.target
 
-        grads, cost = propagation(w, b, X, Y)
-        dw = grads["dw"]
-        db = grads["db"]
+X_train_all, X_val_all, y_train_all, y_val_all = train_test_split(X_all, y_all, test_size=0.25, random_state=42)
 
-        w = w - learning_rate * dw
-        b = b - learning_rate * db
+# Choose a model (e.g., Random Forest) for multi-value classification
+rf_model_all = RandomForestClassifier()
+rf_model_all.fit(X_train_all, y_train_all)
+y_val_pred_all = rf_model_all.predict(X_val_all)
 
-        if print_cost:
-            print("Cost after iteration %i: %f", (i, cost))  # print cost for every iteration
+# Problem 6: Evaluation
+accuracy_all = accuracy_score(y_val_all, y_val_pred_all)
+precision_all = precision_score(y_val_all, y_val_pred_all, average='weighted')
+recall_all = recall_score(y_val_all, y_val_pred_all, average='weighted')
+f1_all = f1_score(y_val_all, y_val_pred_all, average='weighted')
+confusion_mat_all = confusion_matrix(y_val_all, y_val_pred_all)
 
-    params = {"w": w, "b": b}
+print(f'Random Forest (All Variables) - Accuracy: {accuracy_all:.4f}, Precision: {precision_all:.4f}, '
+      f'Recall: {recall_all:.4f}, F1: {f1_all:.4f}')
+print('Confusion Matrix:')
+print(confusion_mat_all)
 
-    grads = {"dw": dw, "db": db}
+# Visualization for Random Forest (All Variables)
+decision_region(X_train_all, y_train_all, rf_model_all, title='Random Forest Decision Region (All Variables)')
 
-    return params, grads, costs
-
-
-dim = 4
-w, b = init_with_zeros(dim)
-print("w = " + str(w))
-print("b = " + str(b), end="\n\n\n\n\n")
-
-grads, cost = propagation(w, b, train_x, train_y)
-print("dw = " + str(grads["dw"]))
-print("db = " + str(grads["db"]))
-print("cost = " + str(cost), end="\n\n\n\n\n")
-
-params, grads, costs = optimize(w, b, train_x, train_y, num_iterations=100, learning_rate=0.009, print_cost=False)
-print("w = " + str(params["w"]))
-print("b = " + str(params["b"]))
-print("dw = " + str(grads["dw"]))
-print("db = " + str(grads["db"]))
-
-
-# Function to predict class of Iris
-
-def predict(w, b, X):
-    m = X.shape[1]
-    Y_prediction = np.zeros((1, m))
-
-    A = sigmoid(np.matmul(w.T, X) + b)
-
-    for i in range(A.shape[1]):
-        if A[0, i] < 0.5:
-            Y_prediction[0, i] = 0
-        else:
-            Y_prediction[0, i] = 1
-
-    assert (Y_prediction.shape == (1, m))
-
-    return Y_prediction
-
-
-# Perform testing on test_data
-print("predictions = " + str(predict(np.array(params["w"]), np.array(params["b"]), test_x)))
-print("Test Set / Actual Output", test_y)
-# Perform testing on new data
-
-data = np.array([[5.8, 2.7, 3.9, 1.2]]).T
-output = np.array(predict(np.array(params["w"]), np.array(params["b"]), data))
-
-#print(str(output))
-if(output[0,0] == float(0.)):
-    print(str(data.T) + "   This is Iris-setosa - class 0")
-else:
-    print(str(data.T) + "   This is Iris-versicolor - class 1")
+# Display results without standardization for comparison
+print('\nResults without Standardization:')
+print(results_no_standardization)
