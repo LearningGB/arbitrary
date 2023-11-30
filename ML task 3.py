@@ -1,13 +1,9 @@
 import numpy as np
-from sklearn import datasets
-from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score
+import matplotlib.pyplot as plt
 
 class ScratchSVMClassifier():
-    def __init__(self, num_iter, lr,
-                 kernel='linear',
-                 threshold=1e-5,
-                 verbose=False):
-
+    def __init__(self, num_iter, lr, kernel='linear', threshold=1e-5, verbose=False):
         self.iter = num_iter
         self.lr = lr
         self.kernel = kernel
@@ -15,91 +11,78 @@ class ScratchSVMClassifier():
         self.verbose = verbose
 
     def fit(self, X, y, X_val=None, y_val=None):
-        n_samples, n_features = X.shape
-
-        # Initialize parameters
-        self.lam_sv = np.zeros(n_samples)
-        self.b = 0
-
-        # Training loop
-        for _ in range(self.iter):
-            # Calculate gradient
-            gradient = self._calculate_gradient(X, y)
-
-            # Update Lagrange multipliers
-            self.lam_sv -= self.lr * gradient
-
-            # Clip values to be within [0, C]
-            self.lam_sv = np.clip(self.lam_sv, 0, None)
-
-            # Update bias term
-            self.b = self._calculate_bias(X, y)
-
-        # Select support vectors
-        support_vector_indices = np.where(self.lam_sv >= self.threshold)[0]
-        self.X_sv = X[support_vector_indices]
-        self.y_sv = y[support_vector_indices]
-        self.lam_sv = self.lam_sv[support_vector_indices]
-        self.n_support_vectors = len(self.X_sv)
+        self.lam_sv = np.zeros(X.shape[0])
+        self.index_support_vectors = np.arange(X.shape[0])
+        self.X_sv = X
+        self.y_sv = y
 
         if self.verbose:
-            print(f"Number of support vectors: {self.n_support_vectors}")
+            print(f"Number of support vectors: {len(self.index_support_vectors)}")
 
-    def _calculate_gradient(self, X, y):
-        gradient = np.zeros_like(self.lam_sv)
-        for i in range(len(self.lam_sv)):
-            gradient[i] = 1 - y[i] * np.sum(self.lam_sv * y * self._kernel_function(X[i], X))
-        return gradient
+    def _update_lambda(self, lam, xi, yi, X):
+        update = lam + self.lr * (1 - np.sum(lam * yi * self.y_sv * self._kernel(xi, X)))
+        return np.maximum(0, update)
 
-    def _calculate_bias(self, X, y):
-        support_vector_indices = np.where(self.lam_sv > self.threshold)[0]
-        if len(support_vector_indices) == 0:
-            return 0  # No support vectors, set bias to 0
-
-        bias_sum = 0
-        for i in support_vector_indices:
-            bias_sum += y[i] - np.sum(self.lam_sv * y * self._kernel_function(X[i, :], self.X_sv))
-
-        return bias_sum / len(support_vector_indices)
-
-    def _kernel_function(self, x1, x2):
+    def _kernel(self, xi, X):
         if self.kernel == 'linear':
-            #x1 = np.expand_dims(x1, axis=1)
-            return np.dot(x1, x2.T)
-        # Add other kernel options here
+            return np.dot(X, xi)
+        elif self.kernel == 'polynomial':
+            gamma = 1
+            theta_0 = 0
+            d = 2
+            return (gamma * np.dot(X, xi) + theta_0) ** d
 
-    def _predict_one(self, x):
-        if self.kernel == 'linear':
-            return np.sum(self.lam_sv * self.y_sv * self._kernel_function(self.X_sv, x)) + self.b
-        # Add other kernel options here
+    def _is_support_vector(self, lam):
+        return lam > self.threshold
 
     def predict(self, X):
-        n_samples = X.shape[0]
-        y_pred = np.zeros(n_samples)
-
-        for i in range(n_samples):
-            y_pred[i] = np.sign(self._predict_one(X[i]))
-
+        y_pred = np.sum(self.lam_sv[self.index_support_vectors] * self.y_sv[self.index_support_vectors]
+                        * self._kernel(X, self.X_sv[self.index_support_vectors]), axis=1)
+        y_pred = np.where(y_pred >= 0, 1, -1)
         return y_pred
 
+# Problem 4
+# Assume X_train, y_train, X_val, y_val are already defined
 
-### test ####
-iris = datasets.load_iris()
-X = iris['data']
-Y = iris['target']
-Y = np.where(Y>0, 1, 0)
+# Train Scratch SVM
+scratch_svm = ScratchSVMClassifier(num_iter=100, lr=0.01, kernel='polynomial', threshold=1e-5, verbose=True)
+scratch_svm.fit(X_train, y_train)
 
-n_iter = 100
-lr = 0.001
-bias = True
-verbose=True
+# Predict with Scratch SVM
+y_val_pred_scratch = scratch_svm.predict(X_val)
 
-SVMClassifier = ScratchSVMClassifier(num_iter=10000,
-                                     lr=0.1,
-                                     threshold=0,
-                                     verbose=verbose)
+# Train and predict with Scikit-learn SVM
+from sklearn.svm import SVC
 
-SVMClassifier.fit(X, Y)
+svm_sklearn = SVC(kernel='poly', degree=2, gamma=1, coef0=0)
+svm_sklearn.fit(X_train, y_train)
+y_val_pred_sklearn = svm_sklearn.predict(X_val)
 
-y_pred = SVMClassifier.predict(X)
-print(Y, y_pred)
+# Compare accuracies
+accuracy_scratch = accuracy_score(y_val, y_val_pred_scratch)
+accuracy_sklearn = accuracy_score(y_val, y_val_pred_sklearn)
+
+print(f"Accuracy - Scratch SVM: {accuracy_scratch:.4f}, Scikit-learn SVM: {accuracy_sklearn:.4f}")
+
+# Problem 5: Visualization of decision area
+def plot_decision_boundary(X, y, model, title="Decision Boundary"):
+    h = .02  # Step size in the mesh
+    x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
+    y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
+    xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
+
+    Z = model.predict(np.c_[xx.ravel(), yy.ravel()])
+    Z = Z.reshape(xx.shape)
+
+    plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.3)
+    plt.scatter(X[:, 0], X[:, 1], c=y, cmap=plt.cm.coolwarm, edgecolors='k')
+    plt.title(title)
+    plt.xlabel("Feature 1")
+    plt.ylabel("Feature 2")
+    plt.show()
+
+# Visualize decision boundary for Scratch SVM
+plot_decision_boundary(X_val, y_val, scratch_svm, title="Scratch SVM Decision Boundary")
+
+# Visualize decision boundary for Scikit-learn SVM
+plot_decision_boundary(X_val, y_val, svm_sklearn, title="Scikit-learn SVM Decision Boundary")
