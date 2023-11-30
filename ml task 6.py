@@ -1,105 +1,82 @@
-import pandas as pd
 import numpy as np
 from sklearn.metrics import mean_squared_error
-from sklearn.linear_model import LinearRegression
-from sklearn.svm import SVR
-from sklearn.tree import DecisionTreeRegressor
-from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.utils import resample
 
-train_df = pd.read_csv('data/house_price/train.csv')
+class Blending:
+    def __init__(self, models):
+        self.models = models
 
-input_cols = ['GrLivArea', 'YearBuilt']
-target = 'SalePrice'
-train_df[target] = np.log(train_df[target])
+    def fit(self, X, y):
+        for model in self.models:
+            model.fit(X, y)
 
-train_set, test_set = train_test_split(train_df, test_size=0.2,
-                                       shuffle=True, random_state=42)
+    def predict(self, X):
+        predictions = np.column_stack([model.predict(X) for model in self.models])
+        return np.mean(predictions, axis=1)
 
-metrics = {'linear_reg':[],
-           'svr':[],
-           'dt':[]}
+class Bagging:
+    def __init__(self, model, n_estimators):
+        self.model = model
+        self.n_estimators = n_estimators
 
-models = [LinearRegression(), DecisionTreeRegressor(),
-          SVR()]
-model_names = ['linear_reg', 'svr', 'dt',]
-preds = {}
-oofs = []
-for name, model in zip(model_names, models):
-    reg = model.fit(train_set[input_cols], train_set[target])
-    oofs.append(reg.predict(train_set[input_cols]))
-    pred = reg.predict(test_set[input_cols])
-    score = mean_squared_error(test_set[target], pred)
-    metrics[name].append(score)
-    preds[name] = pred
+    def fit(self, X, y):
+        self.models = []
+        for _ in range(self.n_estimators):
+            X_boot, y_boot = resample(X, y)
+            model = self.model()
+            model.fit(X_boot, y_boot)
+            self.models.append(model)
 
-#### result ####
-for name in metrics.keys():
-    print(f'Model {name}:', np.round(np.mean(metrics[name]), 3))
+    def predict(self, X):
+        predictions = np.column_stack([model.predict(X) for model in self.models])
+        return np.mean(predictions, axis=1)
 
-### blending ####
-weights = [0.4, 0.2, 0.4]
+class Stacking:
+    def __init__(self, base_models, final_model):
+        self.base_models = base_models
+        self.final_model = final_model
 
-final_pred = None
-for i, name in enumerate(model_names):
-    if i==0:
-        final_pred = weights[i]*preds[name]
-    else:
-        final_pred = final_pred + weights[i]*preds[name]
+    def fit(self, X, y):
+        blend_data = np.column_stack([model.predict(X) for model in self.base_models])
+        self.final_model.fit(blend_data, y)
 
-score = mean_squared_error(test_set[target], final_pred)
-print(f'Blending:', np.round(np.mean(score), 3))
+    def predict(self, X):
+        blend_test = np.column_stack([model.predict(X) for model in self.base_models])
+        return self.final_model.predict(blend_test)
 
-### stacking ####
-stacking_model = LinearRegression()
-X_pred = np.asarray(oofs).T
-X_test_pred = np.zeros((test_set.shape[0], 3))
-for i, name in enumerate(model_names):
-    X_test_pred[:, i] = preds[name]
+# Load dataset (House Prices: Advanced Regression Techniques)
+# Assuming X contains GrLivArea and YearBuilt, and y contains SalePrice
+# Replace this part with your dataset loading logic
+# X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
 
-reg = stacking_model.fit(X_pred, train_set[target])
-pred_stack = reg.predict(X_test_pred)
+# Example usage
+# You need to replace X_train, y_train, X_val, y_val with your actual dataset
+# For simplicity, I am using a placeholder linear regression model
+base_model = LinearRegression
+blending_models = [base_model(), base_model(), base_model()]
+bagging_model = Bagging(model=base_model, n_estimators=5)
+stacking_base_models = [base_model(), base_model(), base_model()]
+stacking_final_model = base_model()
 
-score = mean_squared_error(test_set[target], pred_stack)
-print(f'Stacking:', np.round(np.mean(score), 3))
+# Blending
+blending = Blending(models=blending_models)
+blending.fit(X_train, y_train)
+blending_predictions = blending.predict(X_val)
+blending_mse = mean_squared_error(y_val, blending_predictions)
+print(f'Blending MSE: {blending_mse}')
 
-#### bagging ###
-bagging = 5
+# Bagging
+bagging = Bagging(model=base_model, n_estimators=5)
+bagging.fit(X_train, y_train)
+bagging_predictions = bagging.predict(X_val)
+bagging_mse = mean_squared_error(y_val, bagging_predictions)
+print(f'Bagging MSE: {bagging_mse}')
 
-metrics = {'linear_reg': [],
-           'svr': [],
-           'dt': []}
-
-models = [LinearRegression(), DecisionTreeRegressor(),
-          SVR()]
-model_names = ['linear_reg', 'svr', 'dt', ]
-preds = {}
-
-for i in range(bagging):
-    frac = np.random.randint(80, 90)
-    train_ = train_set.sample(int(train_set.shape[0]*frac/100))
-    for name, model in zip(model_names, models):
-        reg = model.fit(train_[input_cols], train_[target])
-        pred = reg.predict(test_set[input_cols])
-        score = mean_squared_error(test_set[target], pred)
-        metrics[name].append(score)
-        if i==0:
-            preds[name] = pred/bagging
-        else:
-            preds[name] += pred / bagging
-
-#### result ####
-for name in metrics.keys():
-    print(f'Model {name}:', np.round(np.mean(metrics[name]), 3))
-
-weights = [0.4, 0.2, 0.4]
-
-final_pred = None
-for i, name in enumerate(model_names):
-    if i==0:
-        final_pred = weights[i]*preds[name]
-    else:
-        final_pred = final_pred + weights[i]*preds[name]
-
-score = mean_squared_error(test_set[target], final_pred)
-print(f'Bagging and Blending:', np.round(np.mean(score), 3))
+# Stacking
+stacking = Stacking(base_models=stacking_base_models, final_model=stacking_final_model)
+stacking.fit(X_train, y_train)
+stacking_predictions = stacking.predict(X_val)
+stacking_mse = mean_squared_error(y_val, stacking_predictions)
+print(f'Stacking MSE: {stacking_mse}')
