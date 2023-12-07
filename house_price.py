@@ -1,57 +1,57 @@
+# Importing necessary libraries
 import pandas as pd
-import numpy as np
-import seaborn as sns
 import matplotlib.pyplot as plt
+import seaborn as sns
 
-# Problem 1
-# Obtaining a dataset
-df = pd.read_csv('train.csv')
+# Problem 1: Understanding the Competition
+print("Competition Name:", "Home Credit Default Risk")
 
-# Problem 3
-# Checking the data
-print(df.info())
-print(df.columns)
-print(df.describe())
+# Load the required datasets
+application_data = pd.read_csv('application_train.csv')
+description_data = pd.read_csv('HomeCredit_columns_description.csv')
 
-# Problem 4
-# Dealing with missing values
-missing_values = df.isnull().sum()
+# Problem 2: Understanding the Overview of Data
+print("\nHead of Application Data:")
+print(application_data.head())
+
+print("\nInformation about Application Data:")
+print(application_data.info())
+
+print("\nDescription of Application Data:")
+print(application_data.describe())
+
+# Check for missing values
+missing_values = application_data.isnull().sum()
+print("\nMissing Values:")
 print(missing_values)
 
-# Delete features with 5 or more missing values
-df = df.dropna(thresh=len(df) - 5, axis=1)
+# Draw a graph showing the percentage of classes
+application_data['target'].value_counts().plot(kind='bar', title='Percentage of Classes')
+plt.show()
 
-# Drop samples with missing values
-df = df.dropna()
+# Problem 3: Defining Issues
+# Set multiple issues/questions based on data overview
+# Example: What is the distribution of the target variable?
+# Example: Are there any correlations between features?
 
-# Problem 6
-# Confirming distribution
-sns.displot(df['objective_variable'])
-sns.histplot(df['objective_variable'])
-kurtosis = df['objective_variable'].kurtosis()
-skewness = df['objective_variable'].skew()
+# Problem 4: Data Exploration
+# Create at least 5 tables and graphs for exploration
 
-# Perform a logarithmic transformation on the objective variable
-df['log_objective_variable'] = np.log(df['objective_variable'])
-
-# Display the distribution of the logarithmically transformed objective variable
-sns.displot(df['log_objective_variable'])
-sns.histplot(df['log_objective_variable'])
-log_kurtosis = df['log_objective_variable'].kurtosis()
-log_skewness = df['log_objective_variable'].skew()
-
-# Problem 7
-# Confirming the correlation coefficient
-correlation_matrix = df.corr()
-plt.figure(figsize=(12, 8))
+# Plot a correlation matrix
+correlation_matrix = application_data.corr()
 sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm')
+plt.title('Correlation Matrix')
+plt.show()
 
-# Select 10 features with high correlation with the target variable
-high_corr_features = correlation_matrix.nlargest(10, 'objective_variable')['objective_variable'].index
-high_corr_matrix = df[high_corr_features].corr()
-plt.figure(figsize=(10, 8))
-sns.heatmap(high_corr_matrix, annot=True, cmap='coolwarm')
+# Explore the distribution of age
+plt.figure(figsize=(10, 6))
+sns.histplot(application_data['DAYS_BIRTH'] // -365, bins=30, kde=False)
+plt.title('Distribution of Age')
+plt.xlabel('Age (Years)')
+plt.ylabel('Count')
+plt.show()
 
-# Summarize whether the 10 selected features represent something by referring to the description in Kaggle's DataDescription
-# Find 3 combinations of the 10 selected features that have high correlation coefficients with each other
-high_corr_features_combinations = high_corr_matrix.unstack().sort_values(ascending=False).drop_duplicates()
+# Problem 5: (Advanced Task) Posting to Notebooks
+# Save your notebook and share it on Kaggle
+# Example: Save the notebook
+# jupyter nbconvert --to notebook --execute YourNotebook.ipynb
