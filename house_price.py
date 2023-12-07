@@ -51,7 +51,3 @@ plt.xlabel('Age (Years)')
 plt.ylabel('Count')
 plt.show()
 
-# Problem 5: (Advanced Task) Posting to Notebooks
-# Save your notebook and share it on Kaggle
-# Example: Save the notebook
-# jupyter nbconvert --to notebook --execute YourNotebook.ipynb
