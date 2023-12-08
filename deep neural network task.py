@@ -1,6 +1,5 @@
 import numpy as np
 
-# [Problem 1] Classifying fully connected layers
 class FC:
     def __init__(self, n_nodes1, n_nodes2, initializer, optimizer):
         self.optimizer = optimizer
@@ -19,8 +18,6 @@ class FC:
         dB = np.sum(dA, axis=0)
         self = self.optimizer.update(self, dW, dB)
         return dZ
-
-# [Problem 2] Classifying the initialization method
 class SimpleInitializer:
     def __init__(self, sigma):
         self.sigma = sigma
@@ -30,8 +27,6 @@ class SimpleInitializer:
 
     def B(self, n_nodes2):
         return self.sigma * np.random.randn(n_nodes2)
-
-# [Problem 3] Classifying optimization methods
 class SGD:
     def __init__(self, lr):
         self.lr = lr
@@ -40,8 +35,6 @@ class SGD:
         layer.W -= self.lr * dW
         layer.B -= self.lr * dB
         return layer
-
-# [Problem 4] Classifying activation functions
 class Tanh:
     def forward(self, A):
         self.Z = np.tanh(A)
@@ -49,14 +42,6 @@ class Tanh:
 
     def backward(self, dZ):
         return dZ * (1 - self.Z**2)
-
-class ReLU:
-    def forward(self, A):
-        self.Z = np.maximum(0, A)
-        return self.Z
-
-    def backward(self, dZ):
-        return dZ * np.where(self.Z > 0, 1, 0)
 
 class Softmax:
     def forward(self, A):
@@ -66,10 +51,13 @@ class Softmax:
 
     def backward(self, Z, Y):
         return Z - Y
+class ReLU:
+    def forward(self, A):
+        self.Z = np.maximum(0, A)
+        return self.Z
 
-# [Problem 5] ReLU class creation (Already implemented above)
-
-# [Problem 6] Initial value of weight
+    def backward(self, dZ):
+        return dZ * np.where(self.Z > 0, 1, 0)
 class XavierInitializer:
     def W(self, n_nodes1, n_nodes2):
         return np.random.randn(n_nodes1, n_nodes2) / np.sqrt(n_nodes1)
@@ -83,33 +71,36 @@ class HeInitializer:
 
     def B(self, n_nodes2):
         return np.random.randn(n_nodes2) * np.sqrt(2 / n_nodes2)
+class AdaGrad:
+    def __init__(self, lr=0.01):
+        self.lr = lr
+        self.H_W = 0
+        self.H_B = 0
 
-# [Problem 7] Optimization method (Already implemented above)
+    def update(self, layer, dW, dB):
+        self.H_W += dW**2
+        self.H_B += dB**2
 
-# [Problem 8] Class completion
+        layer.W -= self.lr / np.sqrt(self.H_W + 1e-7) * dW
+        layer.B -= self.lr / np.sqrt(self.H_B + 1e-7) * dB
+
+        return layer
 class ScratchDeepNeuralNetworkClassifier:
     def __init__(self, layers, epochs, batch_size, alpha=0.01):
-        # Initialize network parameters
         self.layers = layers
         self.epochs = epochs
         self.batch_size = batch_size
         self.alpha = alpha
         self.losses = []
 
-        # Initialize layers
-        self.network = []
-        for layer in self.layers:
-            self.network.append(layer)
-
     def fit(self, X, y):
         for epoch in range(self.epochs):
-            # Mini-batch processing
             for i in range(0, len(X), self.batch_size):
                 X_batch = X[i:i + self.batch_size]
                 y_batch = y[i:i + self.batch_size]
 
                 # Forward pass
-                for layer in self.network:
+                for layer in self.layers:
                     X_batch = layer.forward(X_batch)
 
                 # Calculate loss and backward pass
@@ -117,11 +108,11 @@ class ScratchDeepNeuralNetworkClassifier:
                 self.losses.append(loss)
 
                 dZ = self.softmax_backward(X_batch, y_batch)
-                for layer in reversed(self.network):
+                for layer in reversed(self.layers):
                     dZ = layer.backward(dZ)
 
     def predict(self, X):
-        for layer in self.network:
+        for layer in self.layers:
             X = layer.forward(X)
         return np.argmax(X, axis=1)
 
@@ -134,11 +125,36 @@ class ScratchDeepNeuralNetworkClassifier:
 
     def softmax_backward(self, y_pred, y_true):
         return y_pred - y_true
+from sklearn.datasets import fetch_openml
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import OneHotEncoder
 
-# [Problem 9] Learning and estimation (Training and testing with MNIST)
-# ... (Code to load MNIST data and preprocess)
+# Load MNIST data
+mnist = fetch_openml('mnist_784', version=1)
+X, y = mnist['data'].values.astype(np.float32), mnist['target'].values.astype(np.int)
+X /= 255.0  # Normalize pixel values to the range [0, 1]
+
+# One-hot encode the labels
+encoder = OneHotEncoder(sparse=False, categories='auto')
+y_onehot = encoder.fit_transform(y.reshape(-1, 1))
+
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y_onehot, test_size=0.2, random_state=42)
 
 # Example usage:
-# model = ScratchDeepNeuralNetworkClassifier(layers=[FC(784, 100, XavierInitializer(), AdaGrad(0.01)),
-#                                                    ReLU(),
-#
+model = ScratchDeepNeuralNetworkClassifier(layers=[
+    FC(784, 100, XavierInitializer(), AdaGrad(0.01)),
+    ReLU(),
+    FC(100, 10, XavierInitializer(), AdaGrad(0.01)),
+    Softmax()
+], epochs=10, batch_size=64)
+
+# Train the model
+model.fit(X_train, y_train)
+
+# Test the model
+y_pred = model.predict(X_test)
+
+# Evaluate accuracy
+accuracy = np.sum(y_pred == np.argmax(y_test, axis=1)) / len(y_test)
+print(f"Accuracy on the test set: {accuracy * 100:.2f}%")
